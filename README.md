@@ -1,3 +1,37 @@
+# sm64ex-web
+
+Modifications to original project Dockerfile to build the emscripten web version of sm64ex
+
+You can probably do this on bare metal by installing emsdk version 1.39.5 along with all normal sm64ex dependencies, but easier to use docker
+
+Instructions:
+
+```
+git clone https://github.com/queenkjuul/sm64ex-web.git
+cd sm64ex-web
+cp /path/to/your/baserom.us.z64 .
+docker build . -t sm64ex --target web
+docker run --rm -v $(pwd):/sm64ex sm64ex make TARGET_WEB=1 -j$(nproc)
+docker run --rm -v $(pwd):/sm64ex sm64ex make TARGET_WEB=1 -j$(nproc)
+```
+
+Yes, that one command is run twice. No idea why that is necessary, but it is.
+
+After successful build, you can easily test if you have Node installed:
+
+```
+cd build/us_web
+npx http-server
+```
+
+## Additional features
+
+I can't get fullscreen working, or real time canvas resizing, but I did add build flags that let you specify the width and height:
+
+```
+docker run --rm -v $(pwd):/sm64ex sm64ex make TARGET_WEB=1 WINDOW_WIDTH=1280 WINDOW_HEIGHT=720 -j$(nproc)
+```
+
 # sm64ex
 Fork of [sm64-port/sm64-port](https://github.com/sm64-port/sm64-port) with additional features. 
 
@@ -5,8 +39,6 @@ Feel free to report bugs and contribute, but remember, there must be **no upload
 Run `./extract_assets.py --clean && make clean` or `make distclean` to remove ROM-originated content.
 
 Please contribute **first** to the [nightly branch](https://github.com/sm64pc/sm64ex/tree/nightly/). New functionality will be merged to master once they're considered to be well-tested.
-
-*Read this in other languages: [Español](README_es_ES.md), [Português](README_pt_BR.md) or [简体中文](README_zh_CN.md).*
 
 ## New features
 
@@ -20,7 +52,6 @@ Please contribute **first** to the [nightly branch](https://github.com/sm64pc/sm
  * Cheats menu in Options (activate with `--cheats` or by pressing L thrice in the pause menu).
  * Support for both little-endian and big-endian save files (meaning you can use save files from both sm64-port and most emulators), as well as an optional text-based save format.
 
-Recent changes in Nightly have moved the save and configuration file path to `%HOMEPATH%\AppData\Roaming\sm64pc` on Windows and `$HOME/.local/share/sm64pc` on Linux. This behaviour can be changed with the `--savepath` CLI option.
 For example `--savepath .` will read saves from the current directory (which not always matches the exe directory, but most of the time it does);
    `--savepath '!'` will read saves from the executable directory.
 

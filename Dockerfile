@@ -1,33 +1,49 @@
-FROM ubuntu:18.04 as build
+FROM ubuntu:22.04 as build
 
 RUN apt-get update && \
     apt-get install -y \
-        binutils-mips-linux-gnu \
-        bsdmainutils \
+        bsdextrautils \
         build-essential \
         git \
-        libaudiofile-dev \
+        libglew-dev \
         libsdl2-dev \
-        pkg-config \
         python3 \
-        wget \
-        zlib1g-dev && \
-    rm -rf /var/lib/apt/lists/*
+        python-is-python3
 
-RUN wget \
-        https://github.com/n64decomp/qemu-irix/releases/download/v2.11-deb/qemu-irix-2.11.0-2169-g32ab296eef_amd64.deb \
-        -O qemu.deb && \
-    echo 8170f37cf03a08cc2d7c1c58f10d650ea0d158f711f6916da9364f6d8c85f741 qemu.deb | sha256sum --check && \
-    dpkg -i qemu.deb && \
-    rm qemu.deb
 
-RUN git clone --depth 1 https://github.com/emscripten-core/emsdk.git && \
-    ./emsdk/emsdk install latest && \
-    ./emsdk/emsdk activate latest
+RUN mkdir /sm64ex
+WORKDIR /sm64ex
+ENV PATH="/sm64ex/tools:${PATH}"
 
-RUN mkdir /sm64
-WORKDIR /sm64
-ENV PATH="/sm64/tools:/emsdk:/emsdk/upstream/emscripten:${PATH}"
+CMD echo 'Usage: docker run --rm -v ${PWD}:/sm64ex sm64ex make BETTERCAMERA=1 EXTERNAL_DATA=1 -j4\n' \
+         'See https://github.com/sm64pc/sm64ex/wiki/Compiling-on-Docker for more information'
 
-CMD echo 'usage: docker run --rm --mount type=bind,source="$(pwd)",destination=/sm64 sm64 make VERSION=${VERSION:-us} -j4\n' \
-         'see https://github.com/n64decomp/sm64/blob/master/README.md for advanced usage'
+FROM build AS web
+
+WORKDIR /
+
+RUN git clone https://github.com/emscripten-core/emsdk.git
+
+RUN /emsdk/emsdk install 1.39.5
+RUN /emsdk/emsdk activate 1.39.5
+
+# normally you'd run 'source $EMSDK/emsdk_env.sh' to load the emsdk environment
+# both Dockerfile and Makefile run each process in a separate subshell so I don't think something like
+#  RUN . /emsdk/emsdk_env.sh
+# will work, nor would doing the same within the Makefile
+# wouldn't be an issue on a bare metal build as the user would have already sourced the file per emsdk docs
+# also, the env script only works in bash, not sh, and I'm not sure about changing shells in Docker
+# versions are pinned, so we can live with it, I guess. node version will change if emsdk is updated
+# run
+#   docker run --rm sm64ex bash -c '. /emsdk/emsdk_env.sh'
+# to print the emsdk environment after a version change
+ENV EMSDK="/emsdk"
+ENV EM_CACHE="/emsdk/upstream/emscripten/cache"
+ENV EM_CONFIG="/emsdk/.emscripten"
+ENV EMSDK_NODE="/emsdk/node/16.20.0_64bit/bin/node"
+ENV PATH="${EMSDK}:${EMSDK_NODE}:${EMSDK}/upstream/emscripten:${PATH}"
+
+WORKDIR /sm64ex
+
+CMD echo 'Usage: docker run --rm -v ${PWD}:/sm64ex sm64ex make BETTERCAMERA=1 EXTERNAL_DATA=1 -j4\n' \
+         'See https://github.com/sm64pc/sm64ex/wiki/Compiling-on-Docker for more information'
